@@ -59,11 +59,10 @@ class Detect(nn.Module):
             x[i] = self.m[i](x[i])  # conv
             bs, _, ny, nx = x[i].shape  # x(bs,255,20,20) to x(bs,3,20,20,85)
             x[i] = x[i].view(bs, self.na, self.no, ny, nx).permute(0, 1, 3, 4, 2).contiguous()
-
+            _, _, h, w =  dynamic_image_shape
             if not self.training:  # inference
                 if self.dynamic or self.grid[i].shape[2:4] != x[i].shape[2:4]:
                     self.grid[i], self.anchor_grid[i] = self._make_grid(nx, ny, i)
-#                     self.grid[i], self.anchor_grid[i] = self._make_grid_of_SSD(nx, ny, i, dynamic_image_shape = dynamic_image_shape[-2:])
                 if isinstance(self, Segment):  # (boxes + masks)
                     xy, wh, conf, mask = x[i].split((2, 2, self.nc + 1, self.no - self.nc - 5), 4)
                     xy = (xy.sigmoid() * 2 + self.grid[i]) * self.stride[i]  # xy
@@ -78,6 +77,35 @@ class Detect(nn.Module):
 
         return x if self.training else (torch.cat(z, 1),) if self.export else (torch.cat(z, 1), x)
 
+#     def forward(self, x, dynamic_image_shape):
+#         z = []  # inference output
+#         for i in range(self.nl):
+#             x[i] = self.m[i](x[i])  # conv
+#             bs, _, ny, nx = x[i].shape  # x(bs,255,20,20) to x(bs,3,20,20,85)
+#             x[i] = x[i].view(bs, self.na, self.no, ny, nx).permute(0, 1, 3, 4, 2).contiguous()
+#             _, _, h, w =  dynamic_image_shape
+#             if not self.training:  # inference
+# #                 if self.dynamic or self.grid[i].shape[2:4] != x[i].shape[2:4]:
+#                 self.grid[i], self.anchor_grid[i] = self._make_grid(nx, ny, i)
+#                 if isinstance(self, Segment):  # (boxes + masks)
+#                     xy, wh, conf, mask = x[i].split((2, 2, self.nc + 1, self.no - self.nc - 5), 4)
+#                     xy = (xy.sigmoid() * 2 + self.grid[i]) * self.stride[i]  # xy
+#                     wh = (wh.sigmoid() * 2) ** 2 * self.anchor_grid[i]  # wh
+#                     y = torch.cat((xy, wh, conf.sigmoid(), mask), 4)
+#                 else:  # Detect (boxes only)
+#                     xy, wh, conf = x[i].sigmoid().split((2, 2, self.nc + 1), 4)
+# #                     xy = (xy * 2 + self.grid[i]) * self.stride[i]  # xy
+#                     self.grid[i][:,:,:,:,0] *= w/nx
+#                     self.grid[i][:,:,:,:,1] *= h/ny
+#                     xy = (xy * 2) * self.stride[i]+ self.grid[i]  # xy
+
+#                     wh = (wh * 2) ** 2 * self.anchor_grid[i]  # wh
+#                     y = torch.cat((xy, wh, conf), 4)
+#                 z.append(y.view(bs, self.na * nx * ny, self.no))
+
+#         return x if self.training else (torch.cat(z, 1),) if self.export else (torch.cat(z, 1), x)    
+    
+    
     def _make_grid(self, nx=20, ny=20, i=0, torch_1_10=check_version(torch.__version__, '1.10.0')):
         d = self.anchors[i].device
         t = self.anchors[i].dtype
@@ -88,16 +116,7 @@ class Detect(nn.Module):
         anchor_grid = (self.anchors[i] * self.stride[i]).view((1, self.na, 1, 1, 2)).expand(shape)
         return grid, anchor_grid
 
-    def _make_grid_of_SSD(self, nx=20, ny=20, i=0, dynamic_image_shape=(200,150), torch_1_10=check_version(torch.__version__, '1.10.0')):
-        h, w = dynamic_image_shape
-        d = self.anchors[i].device
-        t = self.anchors[i].dtype
-        shape = 1, self.na, ny, nx, 2  # grid shape
-        y, x = torch.arange(ny, device=d, dtype=t)/self.stride[i]*h/ny, torch.arange(nx, device=d, dtype=t)/self.stride[i]*w/nx
-        yv, xv = torch.meshgrid(y, x, indexing='ij') if torch_1_10 else torch.meshgrid(y, x)  # torch>=0.7 compatibility
-        grid = torch.stack((xv, yv), 2).expand(shape) - 0.5  # add grid offset, i.e. y = 2.0 * x - 0.5
-        anchor_grid = (self.anchors[i] * self.stride[i]).view((1, self.na, 1, 1, 2)).expand(shape)
-        return grid, anchor_grid    
+  
     
 
 class Segment(Detect):
@@ -208,9 +227,9 @@ class DetectionModel(BaseModel):
             m.inplace = self.inplace
             forward = lambda x: self.forward(x)[0] if isinstance(m, Segment) else self.forward(x)
             
-#             # [[[ yolov5 AB distance method ]]]
-#             m.stride = torch.tensor([s / x.shape[-2] for x in forward(torch.zeros(1, ch, s, s))])
-#             print('\n\n You\'re using Yolov5 AB distance: ', m.stride,'\n\n')
+            # [[[ yolov5 AB distance method ]]]
+            m.stride = torch.tensor([s / x.shape[-2] for x in forward(torch.zeros(1, ch, s, s))])
+            print('\n\n You\'re using Yolov5 AB distance: ', m.stride,'\n\n')
 
     
 #             # [[[ EfficientDet AB distance method ]]]
@@ -229,25 +248,25 @@ class DetectionModel(BaseModel):
 #             print('\n\n You\'re using EfficientDet AB distance: ', m.stride,'\n\n')
 
     
-            # [[[ ours AB distance method ]]]
-            # (not for general, only because we know yolov5 defined layer, 
-            # for general model, it is needed to manually check all layers and calculate them by case by case
-            base = 1
-            for module in self.yaml['backbone']:
-                next_arg = False
-                for args in module:
-                    if next_arg:
-                        for i, arg in enumerate(args):
-                            if i == 2 and arg ==2:
-                                base *= 2
-                        next_arg = False
-                    if args == 'Conv':
-                        next_arg = True
-                    if args == 'Focus':
-                        base *= 2
-            temp = [base/(2**i) for i, _ in enumerate(forward(torch.zeros(1, ch, s, s)))][::-1]
-            m.stride = torch.tensor([base/(2**i) for i, _ in enumerate(forward(torch.zeros(1, ch, s, s)))][::-1])      
-            print('\n\n You\'re using our AB distance: ', m.stride,'\n\n')
+#             # [[[ ours AB distance method ]]]
+#             # (not for general, only because we know yolov5 defined layer, 
+#             # for general model, it is needed to manually check all layers and calculate them by case by case
+#             base = 1
+#             for module in self.yaml['backbone']:
+#                 next_arg = False
+#                 for args in module:
+#                     if next_arg:
+#                         for i, arg in enumerate(args):
+#                             if i == 2 and arg ==2:
+#                                 base *= 2
+#                         next_arg = False
+#                     if args == 'Conv':
+#                         next_arg = True
+#                     if args == 'Focus':
+#                         base *= 2
+#             temp = [base/(2**i) for i, _ in enumerate(forward(torch.zeros(1, ch, s, s)))][::-1]
+#             m.stride = torch.tensor([base/(2**i) for i, _ in enumerate(forward(torch.zeros(1, ch, s, s)))][::-1])      
+#             print('\n\n You\'re using our AB distance: ', m.stride,'\n\n')
             
             check_anchor_order(m)
             m.anchors /= m.stride.view(-1, 1, 1)
