@@ -227,9 +227,9 @@ class DetectionModel(BaseModel):
             m.inplace = self.inplace
             forward = lambda x: self.forward(x)[0] if isinstance(m, Segment) else self.forward(x)
             
-            # [[[ yolov5 AB distance method ]]]
-            m.stride = torch.tensor([s / x.shape[-2] for x in forward(torch.zeros(1, ch, s, s))])
-            print('\n\n You\'re using Yolov5 AB distance: ', m.stride,'\n\n')
+#             # [[[ yolov5 AB distance method ]]]
+#             m.stride = torch.tensor([s / x.shape[-2] for x in forward(torch.zeros(1, ch, s, s))])
+#             print('\n\n You\'re using Yolov5 AB distance: ', m.stride,'\n\n')
 
     
 #             # [[[ EfficientDet AB distance method ]]]
@@ -248,25 +248,25 @@ class DetectionModel(BaseModel):
 #             print('\n\n You\'re using EfficientDet AB distance: ', m.stride,'\n\n')
 
     
-#             # [[[ ours AB distance method ]]]
-#             # (not for general, only because we know yolov5 defined layer, 
-#             # for general model, it is needed to manually check all layers and calculate them by case by case
-#             base = 1
-#             for module in self.yaml['backbone']:
-#                 next_arg = False
-#                 for args in module:
-#                     if next_arg:
-#                         for i, arg in enumerate(args):
-#                             if i == 2 and arg ==2:
-#                                 base *= 2
-#                         next_arg = False
-#                     if args == 'Conv':
-#                         next_arg = True
-#                     if args == 'Focus':
-#                         base *= 2
-#             temp = [base/(2**i) for i, _ in enumerate(forward(torch.zeros(1, ch, s, s)))][::-1]
-#             m.stride = torch.tensor([base/(2**i) for i, _ in enumerate(forward(torch.zeros(1, ch, s, s)))][::-1])      
-#             print('\n\n You\'re using our AB distance: ', m.stride,'\n\n')
+            # [[[ ours AB distance method ]]]
+            # (not for general, only because we know yolov5 defined layer, 
+            # for general model, it is needed to manually check all layers and calculate them by case by case
+            base = 1
+            for module in self.yaml['backbone']:
+                next_arg = False
+                for args in module:
+                    if next_arg:
+                        for i, arg in enumerate(args):
+                            if i == 2 and arg ==2:
+                                base *= 2
+                        next_arg = False
+                    if args == 'Conv':
+                        next_arg = True
+                    if args == 'Focus':
+                        base *= 2
+            temp = [base/(2**i) for i, _ in enumerate(forward(torch.zeros(1, ch, s, s)))][::-1]
+            m.stride = torch.tensor([base/(2**i) for i, _ in enumerate(forward(torch.zeros(1, ch, s, s)))][::-1])      
+            print('\n\n You\'re using our AB distance: ', m.stride,'\n\n')
             
             check_anchor_order(m)
             m.anchors /= m.stride.view(-1, 1, 1)
