@@ -325,14 +325,6 @@ class Expand(nn.Module):
         return x.view(b, c // s ** 2, h * s, w * s)  # x(1,16,160,160)
 
 
-# class Concat(nn.Module):
-#     # 원래 Concatenate a list of tensors along dimension
-#     def __init__(self, dimension=1):
-#         super().__init__()
-#         self.d = dimension
-
-#     def forward(self, x):
-#         return torch.cat(x, self.d)
 
 class Concat(nn.Module):
     # Concatenate a list of tensors along dimension
@@ -345,7 +337,6 @@ class Concat(nn.Module):
         return torch.cat([x[0][:,:,:x[1].size(2),:x[1].size(3)], x[1][:,:,:x[0].size(2),:x[0].size(3)]], self.d)
 
 
-# +
 # class Concat(nn.Module):
 #     # Wrong Concatenate : remove the upper left features
 #     def __init__(self, dimension=1):
