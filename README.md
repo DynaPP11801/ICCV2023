@@ -73,23 +73,5 @@ https://drive.google.com/file/d/1MpPPzEgjuRH3DjwFE0jhDxscSzqMjPpW/view?usp=share
 
 https://drive.google.com/file/d/1w_K7uV4C_VxM5NryFpJFQC8OtSZbPIde/view?usp=share_link
 
----
-## Hardware test
-### We provide tested results on Jetson Nanon and TX2 : 'Time measured by hardwares.xlsx'
 
-![image](https://user-images.githubusercontent.com/118588373/203310683-7ea2fe02-b5e8-4d04-96ab-f1a6b3f26947.png)
-![not_square_Nano](https://user-images.githubusercontent.com/118588373/203301518-3fcd6475-a6cc-402f-a62b-2725244eea48.png)
-
-
-![TX2](https://user-images.githubusercontent.com/118588373/203301579-1c667e59-f192-412b-b3ed-a3af36c5a9a6.png)
-![not_square_TX2](https://user-images.githubusercontent.com/118588373/203301641-c4e99322-ad9c-4d66-a1e1-bb2e640a8f01.png)
-
-
-Depending on the hardware, the inference time may not be accelerated as much as the operation costs reduction.
-
-So please check your environment with the code: 'Test_your_hardware.ipynb'
-
-We strongly recommend using Jetson Nvidia TX2 and Jetson Nano or with hardware of a similar specification.
-
-However, if there is none, please experiment with existing hardware and refer to the result of acceleration indirectly with *average resolution* in 'excel_results/files'.
 
