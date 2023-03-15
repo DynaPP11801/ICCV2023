@@ -9,17 +9,21 @@ Inside 'Run.ipynb'
 
 Common options ("val.py") (will be updated more)
 
-"--pack": DynaPP acceleration
+"--whether_pack": DynaPP (or Pack and Detect) acceleration
 
 "--duration": key frame duration length
 
-"--background": background amount (d%)
+"--background": background amount (DB%)
+
+"--minimum": background amount (200/MB%)
 
 "--data": *.data path
 
 "--weights": model.pt path(s)
 
 "--dataset_name": dataset name
+
+"--saved_frames": number of frames to save
 
 
 ---
